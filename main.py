@@ -2,17 +2,22 @@ import pygame, darkdetect, numpy as np, time
 from tkinter import*
 from tkinter import messagebox
 from win32api import GetMonitorInfo, MonitorFromPoint
+
 pygame.mixer.init()
-pygame.mixer.music.load("Typing Test\\assets\\e.mp3")
+pygame.mixer.music.load("assets\\e.mp3")
+
 app = Tk()
+
 darKColor = "#202020"
 lightColor = "white"
 currentColor = None
 sysTheme = darkdetect.isDark()
+
 match sysTheme:
     case True:currentColor = darKColor
     case False:currentColor = lightColor
     case _:currentColor = darKColor
+
 appTitle = "Master Typing -Test your typing skills here v1.0"
 app.resizable(0,0)
 app.overrideredirect(1)
@@ -27,13 +32,16 @@ windowHeight = screenSize[3] - (screenSize[3] - taskarHeight[3])
 app.geometry(f"{windowWidth}x{windowHeight}+0+0")
 offsetx = 0
 offsety = 0
+
 def dragWindow(event):
     pointerX = app.winfo_pointerx() - app.offsetx
     pointerY = app.winfo_pointery() - app.offsety
     app.geometry(f"+{pointerX}+{pointerY}")
+
 def primaryClick(event):
     app.offsetx = event.x
     app.offsety = event.y
+
 play = True
 playing = True
 def playSound():
@@ -43,9 +51,11 @@ def playSound():
         pygame.mixer.music.set_volume(1)
         pygame.mixer.music.play()
         play = False
+
 def avoidLongPress():
     global play
     play = True
+
 def detectKeyPress(e):
     global time0
     key = e.keysym
@@ -55,26 +65,37 @@ def detectKeyPress(e):
     if key == "Escape":resetGame()
     playSound()
     if started:checkWords(key)
+
 def detectKeyRelease(e):avoidLongPress()
+
 toolbarColor = "green"
 toolbarFrame = Frame(app, background=toolbarColor, bd=0)
 toolbarFrame.place(x=0, y=0, width=windowWidth, height=screenHeight-(screenHeight-20))
 titleLabel = Label(toolbarFrame, text=appTitle, background=toolbarColor, foreground="white")
 titleLabel.place(relx=0.00,rely=0.50, anchor=W)
+
 def closeHighlight(e):closeButton.config(background="red",foreground="white")
+
 def closeDefault(e):closeButton.config(background=toolbarColor,foreground="red")
+
 def closeWindow():
     app.destroy()
+
 closeButton = Button(toolbarFrame, text="❌", width=2, background=toolbarColor, foreground="red", bd=0, activebackground="red",activeforeground="white",command=closeWindow)
 closeButton.place(relx=1.00, rely=0.50, anchor=E, height=screenHeight-(screenHeight-20))
+
 def minHighlight(e):minButton.config(background="white",foreground="black")
+
 def minDefault(e):minButton.config(background=toolbarColor,foreground="white")
+
 def minimizeWindow():
     app.withdraw()
     app.overrideredirect(False)
     app.iconify()
+
 minButton = Button(toolbarFrame, text="➖", width=2, background=toolbarColor, foreground="white", bd=0, activebackground="white",activeforeground="black",command=minimizeWindow)
 minButton.place(relx=0.98, rely=0.50, anchor=E, height=screenHeight-(screenHeight-20))
+
 app.bind("<KeyPress>", detectKeyPress)
 app.bind("<KeyRelease>", detectKeyRelease)
 toolbarFrame.bind('<B1-Motion>', dragWindow)
@@ -83,17 +104,19 @@ closeButton.bind("<Enter>",closeHighlight)
 closeButton.bind("<Leave>",closeDefault)
 minButton.bind("<Enter>",minHighlight)
 minButton.bind("<Leave>",minDefault)
+
 def resetWindowPos(e):app.geometry(f"{windowWidth}x{windowHeight}+0+0")
+
 toolbarFrame.bind('<Double-Button-1>', resetWindowPos)
 app.protocol('WM_DELETE_WINDOW', closeWindow)
+
 def check_map(event):
     if str(event) == "<Map event>":
         app.overrideredirect(1)
+
 app.bind('<Map>', check_map)
 app.bind('<Unmap>', check_map)
-app.attributes('-topmost',True)
 #App contents from here
-######################
 
 cEasy = IntVar()
 cMedium = IntVar()
@@ -104,7 +127,7 @@ def getWords(num=40):
     if cEasy.get():wordFile = "easy"
     elif cMedium.get():wordFile = "medium"
     else:wordFile = "hard"
-    with open(f"Typing Test\\assets\\{wordFile}","r") as wf:#word file
+    with open(f"assets\\{wordFile}","r") as wf:#word file
         wordsList = wf.readlines()
     allWords = []
     for i in wordsList:
@@ -129,7 +152,6 @@ started = False
 time0 = None
 typingDelay = None
 timeList = []
-
 
 def checkWords(key):
     global letterIndex, mistakes, typed, cWIndex, typingDelay, time0
@@ -176,7 +198,6 @@ def showMistake():
     print("Total letters:", len(pCwords))
     print("Total time:",sum(timeList))
 
-
 def updateInformaation():
     global finished
     if not mistakes:
@@ -185,7 +206,6 @@ def updateInformaation():
         accuracyPercentage = round(100 - ((mistakes/typed)*100), 2)
         tyingAccuracy.config(text=f"Accuracy: {accuracyPercentage} %")
     plainWords = " ".join(cWords)
-
     currentWord.config(text=f"Current Word: {cWords[cWIndex]}")
     try:nextWord.config(text=f"Next Word: {cWords[cWIndex+1]}")
     except:nextWord.config(text=f"Next Word: ...")
@@ -228,6 +248,7 @@ def startGame():
     if randomW.get():
         cWords = getWords(numberOfWords.get())
         pCwords = " ".join(cWords)
+        print("Lenggth of words",len(pCwords))
     else:
         cText = textField.get(1.0, "end")
         if len(cText) >= 2:
@@ -257,7 +278,6 @@ def startGame():
     except:nextWord.config(text=f"Next Word: ...")
     try:nextLetter.config(text=f"Next Character: {cWords[0][0]}")
     except:nextLetter.config(text=f"Next Character: ...")
-
 
 def resetGame():
     global started, cWords, pCwords, letterIndex, mistakes, typed, mistakesList, cWIndex, time0, timeList, typingDelay, finished, seconds, minutes, wpmChecking
@@ -291,16 +311,13 @@ def resetGame():
     tyingAccuracy.config(text="Accuracy: ...")
     wpmLabel.config(text="WPM: ...")
 
-
 def chooseRandomWords():
     customWords.config(state=NORMAL)
     customW.set(0)
     textField.delete("1.0", "end")
-    textField.insert(INSERT, "Press enter or start button to get random words")
     textField.config(state=DISABLED)
     randomWords.config(state=DISABLED)
     wordsLimit.config(state=NORMAL)
-
 
 def chooseCustomWords():
     randomWords.config(state=NORMAL)
@@ -311,62 +328,46 @@ def chooseCustomWords():
     customWords.config(state=DISABLED)
     wordsLimit.config(state=DISABLED)
 
-
 textField = Text(app, font=("arial",20), background="#404040", bd=0, foreground="white", spacing1=2, spacing2=4, state=DISABLED)
 textField.place(x=10, y=screenHeight-(screenHeight-20)+10, width=screenWidth-20, height=round(screenHeight/4))
-
 
 infoFrame = Frame(app, background="#404040")
 infoFrame.place(x=10, y=round(screenHeight/4)+40, width=screenWidth-20, height=round(screenHeight/18))
 
-
 currentWord = Label(infoFrame, text=f"Current Word: ...", font=("arial",18),background="#404040", foreground=lightColor)
 currentWord.place(relx=0.00, rely=0.50, anchor=W)
-
 
 nextLetter = Label(infoFrame, text=f"Next Character: ...", font=("arial",18),background="#404040", foreground=lightColor)
 nextLetter.place(relx=0.30, rely=0.50, anchor=W)
 
-
 nextWord = Label(infoFrame, text=f"Next Word: ...", font=("arial",18),background="#404040", foreground=lightColor)
 nextWord.place(relx=0.70, rely=0.50, anchor=E)
-
 
 tyingAccuracy = Label(infoFrame, text="Accuracy: ...", font=("arial",18),background="#404040", foreground=lightColor)
 tyingAccuracy.place(relx=1.00, rely=0.50, anchor=E)
 
-
 settingsFrame = LabelFrame(app, bd=0,)
 settingsFrame.place(x=10, y=round(windowHeight-(windowHeight/4))-10, width=windowWidth-20, height=round(windowHeight/4))
 
-
-#Words settings
 wordsSetting = LabelFrame(settingsFrame,background="#404040",bd=2,font=("arial",12),foreground="white")
 wordsSetting.place(relx=0.00,rely=0.00,anchor=NW,height=round(windowHeight/4),width=round(screenWidth/3))
-
 
 randomWords = Checkbutton(wordsSetting, text="Play with random words", font=("arial", 18), anchor="w", command=chooseRandomWords, variable=randomW, state=DISABLED)
 randomWords.place(relx=0.50, rely=0.06, anchor=N, width=round(screenWidth/3)-40)
 
-
 customWords = Checkbutton(wordsSetting, text="Play with your words", font=("arial", 18), anchor="w", command=chooseCustomWords, variable=customW)
 customWords.place(relx=0.50, rely=0.50, anchor=CENTER, width=round(screenWidth/3)-40)
-
 
 wordsLimit = Scale(wordsSetting, from_=1, to=70, orient="horizontal", variable=numberOfWords)
 wordsLimit.place(relx=0.50, rely=0.94, anchor=S, width=round(screenWidth/3)-40)
 
-
-#Typing mode settings
 typeMode = LabelFrame(settingsFrame,background="#404040",bd=2,font=("arial",12),foreground="white")
 typeMode.place(relx=0.333333,rely=0.00,anchor=NW,height=round(windowHeight/4),width=round(screenWidth/3))
-
 
 freeTyp = IntVar()
 freeTyp.set(value=1)
 cWpm = IntVar()
 cWpm.set(value=0)
-
 
 def enableFreeTyping():
     global wpmChecking
@@ -392,7 +393,6 @@ def enableCheckWpm():
     wordsLimit.config(state=DISABLED)
     customWords.config(state=DISABLED)
 
-
 freeTyping = Checkbutton(typeMode, text="Free typing", font=("arial", 18), anchor="w", variable=freeTyp,command=enableFreeTyping, state=DISABLED)
 freeTyping.place(relx=0.50, rely=0.06, anchor=N, width=round(screenWidth/3)-40)
 
@@ -410,14 +410,11 @@ def keypressSound():
 keyPress = Checkbutton(typeMode, text="Keypress sound", font=("arial", 18), anchor="w", command=keypressSound, variable=kpSound)
 keyPress.place(relx=0.50, rely=0.94, anchor=S, width=round(screenWidth/3)-40)
 
-
-#Controls and timing settings
 controlsFrame = LabelFrame(settingsFrame,background="#404040",bd=2,font=("arial",12),foreground="white")
 controlsFrame.place(relx=0.666666,rely=0.00,anchor=NW,height=round(windowHeight/4),width=round(screenWidth/3))
 
 wpmLabel = Label(controlsFrame, text="WPM: ...", background="#404040",font=("arial",30),foreground="white")
 wpmLabel.place(relx=0.10,rely=0.08,anchor=NW)
-
 
 timerLabel = Label(controlsFrame, text="00:00", background="#404040",font=("arial",30),foreground="white")
 timerLabel.place(relx=0.90,rely=0.08,anchor=NE)
@@ -452,23 +449,18 @@ mediumWords.place(relx=0.50,rely=0.50,anchor=CENTER)
 hardWords = Checkbutton(controlsFrame, text="Hard", font=("arial", 10), anchor="w", width=10, command=chooseHard, variable=cHard)
 hardWords.place(relx=0.90,rely=0.50,anchor=E)
 
-
 startButton = Button(controlsFrame, text="Start", command=startGame, bd=0, font=("arial", 15), width=10)
 startButton.place(relx=0.10,rely=0.92,anchor=SW)
-
 
 resetButton = Button(controlsFrame, text="Reset", command=resetGame, bd=0, font=("arial", 15), width=10)
 resetButton.place(relx=0.50,rely=0.92,anchor=S)
 
 def showHelp():
-    helpText = """
-        Help Window
-    """
-    messagebox.showinfo("Help", helpText)
+    helpText = """This app/game is made for those who wnat to improve their typing skills.It has a very simple User interface and easy controls.\n\nLet's start with window control.\nClick on top of the title bar (green area) to drag and move window.\nDouble click on title bar to reset it's position.\n\nWords settings.\nPlay with random words: This setting brings some random words according to the slide bar.\nPlay with your words:You can enter your words to practice. You can enter sentences, phrases or anything you like, it's upto you. But only less than 70 words are allowed. Any special characters (like , . / \ [ $ & ...]) are not allowed for now. It will be available in near future. Remember to put some easy and shorter words otherwise it may be difficult for you to type.\nSlider:This slider is used to choose the number of random words you want to practice.\n\nTyping Settings\nFree typing:This mode allows you to type freely without any time limit.\nCheck WPM: You can check WPM (words per minute) by selecting this mode. This mode is only available for random words and not for custom words because user can enter very short words and show off their fake typing skills. For the fair play, Check WPM is only available for random words.\nKeypress sound: AS the title suggests, you can enable or diaable keypress sound.\n\nControls:\nYou can view WPM stats and timer here.\nYou can choose the difficulty level of words you want to practice.\nEasy:You will get words with less than or equal to four characters in this mode.\nMedium:You will get words with less than or equal to eight characters in this mode.\nHard:You will get words with more than eight characters in this mode.\nStart game: You can click on Start button or press Enter key.\nReset game: You can click on Reset button or press Esc key."""
+    messagebox.showinfo("Documentation", helpText)
 
-helpButton = Button(controlsFrame, text="Help", command=showHelp, bd=0, font=("arial", 15), width=10)
+helpButton = Button(controlsFrame, text="Docs", command=showHelp, bd=0, font=("arial", 15), width=10)
 helpButton.place(relx=0.90,rely=0.92,anchor=SE)
 
-######################
 app.mainloop()
 #This much :)
