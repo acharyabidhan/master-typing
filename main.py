@@ -1,4 +1,4 @@
-import pygame, darkdetect, numpy as np, time
+import pygame, darkdetect, time, random
 from tkinter import*
 from tkinter import messagebox
 from win32api import GetMonitorInfo, MonitorFromPoint
@@ -7,6 +7,9 @@ pygame.mixer.init()
 pygame.mixer.music.load("assets\\e.mp3")
 
 app = Tk()
+
+try:app.iconbitmap("assets\\icon.ico")
+except:pass
 
 darKColor = "#202020"
 lightColor = "white"
@@ -132,7 +135,7 @@ def getWords(num=40):
     allWords = []
     for i in wordsList:
         allWords.append(i[:-1])
-    words = np.random.choice(allWords, num)
+    words = random.choices(allWords, k=num)
     return words
 
 
@@ -193,10 +196,11 @@ def showWPM():
     wpmLabel.config(text=f"WPM: {WPM}")
 
 def showMistake():
-    print("Total mistakes:",mistakes)
-    print("Total words:", len(cWords))
-    print("Total letters:", len(pCwords))
-    print("Total time:",sum(timeList))
+    # print("Total mistakes:",mistakes)
+    # print("Total words:", len(cWords))
+    # print("Total letters:", len(pCwords))
+    # print("Total time:",sum(timeList))
+    pass
 
 def updateInformaation():
     global finished
@@ -248,7 +252,6 @@ def startGame():
     if randomW.get():
         cWords = getWords(numberOfWords.get())
         pCwords = " ".join(cWords)
-        print("Lenggth of words",len(pCwords))
     else:
         cText = textField.get(1.0, "end")
         if len(cText) >= 2:
