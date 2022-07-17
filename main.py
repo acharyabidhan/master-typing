@@ -1,5 +1,6 @@
-import pygame, darkdetect, numpy as np
+import pygame, darkdetect, numpy as np, time
 from tkinter import*
+from tkinter import messagebox
 from win32api import GetMonitorInfo, MonitorFromPoint
 pygame.mixer.init()
 pygame.mixer.music.load("Typing Test\\assets\\e.mp3")
@@ -34,9 +35,10 @@ def primaryClick(event):
     app.offsetx = event.x
     app.offsety = event.y
 play = True
+playing = True
 def playSound():
     global play
-    if play:
+    if play and playing:
         pygame.mixer.music.stop()
         pygame.mixer.music.set_volume(1)
         pygame.mixer.music.play()
@@ -45,15 +47,15 @@ def avoidLongPress():
     global play
     play = True
 def detectKeyPress(e):
+    global time0
     key = e.keysym
-    if key == "Down":
-        ypos = round(screenHeight/2)
-        app.geometry(f"{windowWidth}x{windowHeight}+0+{ypos}")
+    if key == "Return" and not started:
+        time0 = time.time()
+        startGame()
+    if key == "Escape":resetGame()
     playSound()
-    if started:
-        checkWords(key)
-def detectKeyRelease(e):
-    avoidLongPress()
+    if started:checkWords(key)
+def detectKeyRelease(e):avoidLongPress()
 toolbarColor = "green"
 toolbarFrame = Frame(app, background=toolbarColor, bd=0)
 toolbarFrame.place(x=0, y=0, width=windowWidth, height=screenHeight-(screenHeight-20))
@@ -93,9 +95,16 @@ app.attributes('-topmost',True)
 #App contents from here
 ######################
 
+cEasy = IntVar()
+cMedium = IntVar()
+cMedium.set(value=1)
+cHard = IntVar()
 
 def getWords(num=40):
-    with open("Typing Test\\assets\\words","r") as wf:
+    if cEasy.get():wordFile = "easy"
+    elif cMedium.get():wordFile = "medium"
+    else:wordFile = "hard"
+    with open(f"Typing Test\\assets\\{wordFile}","r") as wf:#word file
         wordsList = wf.readlines()
     allWords = []
     for i in wordsList:
@@ -104,6 +113,7 @@ def getWords(num=40):
     return words
 
 
+wpmChecking = False
 randomW = IntVar(value=1)
 customW = IntVar()
 numberOfWords = IntVar()
@@ -116,13 +126,18 @@ mistakesList = []
 cWIndex = 0
 pCwords = " ".join(cWords)
 started = False
+time0 = None
+typingDelay = None
+timeList = []
 
 
 def checkWords(key):
-    global letterIndex, mistakes, typed, cWIndex
+    global letterIndex, mistakes, typed, cWIndex, typingDelay, time0
     if letterIndex > len(pCwords)-1:
+        if wpmChecking:showWPM()
         return
     else:
+        if cWIndex > 40:textField.see("end")
         if key == "space":
             key = " "
         if len(key) == 1:
@@ -136,18 +151,34 @@ def checkWords(key):
                 textField.tag_config("b", foreground="red")
                 textField.tag_add("b", f"1.{letterIndex}", f"1.{letterIndex+1}")
                 if pCwords[letterIndex] == " " and key != " ":cWIndex += 1                   
+            time1 = time.time()
+            typingDelay = time1 - time0
+            time0 = time.time()
+            timeList.append(typingDelay)
             typed += 1
             updateInformaation()
             letterIndex += 1
             showMistake()
 
+def showWPM():
+    noOfWoTyped = len(cWords[:cWIndex])
+    noOfChar = len(" ".join(cWords[:cWIndex]))
+    if noOfWoTyped == 0 or noOfChar == 0:
+        wpmLabel.config(text=f"WPM: 1")
+        return
+    avgWordNo = round(noOfChar / noOfWoTyped)
+    WPM = round((noOfChar / avgWordNo) * 1.5)
+    wpmLabel.config(text=f"WPM: {WPM}")
 
 def showMistake():
-    print("Letter mistakes:",mistakes)
-    print(mistakesList)
+    print("Total mistakes:",mistakes)
+    print("Total words:", len(cWords))
+    print("Total letters:", len(pCwords))
+    print("Total time:",sum(timeList))
 
 
 def updateInformaation():
+    global finished
     if not mistakes:
         tyingAccuracy.config(text=f"Accuracy: 100.00 %")
     else:    
@@ -157,18 +188,43 @@ def updateInformaation():
 
     currentWord.config(text=f"Current Word: {cWords[cWIndex]}")
     try:nextWord.config(text=f"Next Word: {cWords[cWIndex+1]}")
-    except:nextWord.config(text=f"Next Word: N/A")
+    except:nextWord.config(text=f"Next Word: ...")
     try:
         nL = plainWords[letterIndex+1]
         if nL == " ":nL = "space"
         nextLetter.config(text=f"Next Character: {nL}")
-    except:nextLetter.config(text=f"Next Character: N/A")
+    except:
+        finished = True
+        nextLetter.config(text=f"Next Character: ...")
 
+finished = True
+seconds = 0
+minutes = 0
+def startTimer():
+    global seconds, started, minutes, loading
+    if finished:return
+    if wpmChecking and minutes == 1:
+        started = False
+        showWPM()
+        return
+    if seconds > 59:
+        seconds = 0
+        minutes += 1
+    timerLabel.config(text=f"{str(minutes).zfill(2)}:{str(seconds).zfill(2)}")
+    app.after(1000, startTimer)
+    seconds += 1
 
 def startGame():
-    global started, cWords, pCwords
+    global started, cWords, pCwords, time0, finished
+    finished = False
+    time0 = time.time()
+    startTimer()
+    if wpmChecking:
+        wpmLabel.config(text=f"WPM: ...")
     if randomW.get():customWords.config(state=DISABLED)
     else:randomWords.config(state=DISABLED)
+    if cWpm.get():freeTyping.config(state=DISABLED)
+    else:wpmTest.config(state=DISABLED)
     if randomW.get():
         cWords = getWords(numberOfWords.get())
         pCwords = " ".join(cWords)
@@ -176,11 +232,15 @@ def startGame():
         cText = textField.get(1.0, "end")
         if len(cText) >= 2:
             if "." in cText:cText = cText.replace(".","")
+            if "," in cText:cText = cText.replace(",","")
             ccWords = cText.split(" ")
             cWords = []
+            wCount = 0
             for k in ccWords:
+                if wCount > 60:break
                 if "\n" in k:cWords.append(k[:-1])
                 else:cWords.append(k)
+                wCount += 1
             pCwords = " ".join(cWords)
         else:
             cWords = ["Enter", "your", "words", "here"]
@@ -192,17 +252,28 @@ def startGame():
     textField.insert(INSERT, pCwords)
     textField.config(state=DISABLED)
     try:currentWord.config(text=f"Current Word: {cWords[0]}")
-    except:currentWord.config(text=f"Current Word: N/A")
+    except:currentWord.config(text=f"Current Word: ...")
     try:nextWord.config(text=f"Next Word: {cWords[0+1]}")
-    except:nextWord.config(text=f"Next Word: N/A")
+    except:nextWord.config(text=f"Next Word: ...")
     try:nextLetter.config(text=f"Next Character: {cWords[0][0]}")
-    except:nextLetter.config(text=f"Next Character: N/A")
+    except:nextLetter.config(text=f"Next Character: ...")
 
 
 def resetGame():
-    global started, cWords, pCwords, letterIndex, mistakes, typed, mistakesList, cWIndex
+    global started, cWords, pCwords, letterIndex, mistakes, typed, mistakesList, cWIndex, time0, timeList, typingDelay, finished, seconds, minutes, wpmChecking
+    if cWpm.get():wpmChecking = True
+    else:wpmChecking = False
+    seconds = 0
+    minutes = 0
+    finished = True
+    timerLabel.config(text="00:00")
+    time0 = None
+    typingDelay = None
+    timeList = []
     if randomW.get():customWords.config(state=NORMAL)
     else:randomWords.config(state=NORMAL)
+    if cWpm.get():freeTyping.config(state=NORMAL)
+    else:wpmTest.config(state=NORMAL)
     started = False
     cWords = getWords(numberOfWords.get())
     pCwords = " ".join(cWords)
@@ -214,10 +285,11 @@ def resetGame():
     startButton.config(state=NORMAL)
     textField.config(state=NORMAL)
     textField.delete("1.0", "end")
-    currentWord.config(text="Current Word: N/A")
-    nextWord.config(text="Next Word: N/A")
-    nextLetter.config(text="Next Character: N/A")
-    tyingAccuracy.config(text="Accuracy: N/A")
+    currentWord.config(text="Current Word: ...")
+    nextWord.config(text="Next Word: ...")
+    nextLetter.config(text="Next Character: ...")
+    tyingAccuracy.config(text="Accuracy: ...")
+    wpmLabel.config(text="WPM: ...")
 
 
 def chooseRandomWords():
@@ -248,19 +320,19 @@ infoFrame = Frame(app, background="#404040")
 infoFrame.place(x=10, y=round(screenHeight/4)+40, width=screenWidth-20, height=round(screenHeight/18))
 
 
-currentWord = Label(infoFrame, text=f"Current Word: N/A", font=("arial",18),background="#404040", foreground=lightColor)
+currentWord = Label(infoFrame, text=f"Current Word: ...", font=("arial",18),background="#404040", foreground=lightColor)
 currentWord.place(relx=0.00, rely=0.50, anchor=W)
 
 
-nextLetter = Label(infoFrame, text=f"Next Character: N/A", font=("arial",18),background="#404040", foreground=lightColor)
+nextLetter = Label(infoFrame, text=f"Next Character: ...", font=("arial",18),background="#404040", foreground=lightColor)
 nextLetter.place(relx=0.30, rely=0.50, anchor=W)
 
 
-nextWord = Label(infoFrame, text=f"Next Word: N/A", font=("arial",18),background="#404040", foreground=lightColor)
+nextWord = Label(infoFrame, text=f"Next Word: ...", font=("arial",18),background="#404040", foreground=lightColor)
 nextWord.place(relx=0.70, rely=0.50, anchor=E)
 
 
-tyingAccuracy = Label(infoFrame, text="Accuracy: N/A", font=("arial",18),background="#404040", foreground=lightColor)
+tyingAccuracy = Label(infoFrame, text="Accuracy: ...", font=("arial",18),background="#404040", foreground=lightColor)
 tyingAccuracy.place(relx=1.00, rely=0.50, anchor=E)
 
 
@@ -269,43 +341,133 @@ settingsFrame.place(x=10, y=round(windowHeight-(windowHeight/4))-10, width=windo
 
 
 #Words settings
-wordsSetting = LabelFrame(settingsFrame, text="Words Settings", labelanchor="n",background="#404040",bd=4,font=("arial",12),foreground="white")
+wordsSetting = LabelFrame(settingsFrame,background="#404040",bd=2,font=("arial",12),foreground="white")
 wordsSetting.place(relx=0.00,rely=0.00,anchor=NW,height=round(windowHeight/4),width=round(screenWidth/3))
 
 
-randomWords = Checkbutton(wordsSetting, text="Practice random words", font=("arial", 18), anchor="w", command=chooseRandomWords, variable=randomW, state=DISABLED)
+randomWords = Checkbutton(wordsSetting, text="Play with random words", font=("arial", 18), anchor="w", command=chooseRandomWords, variable=randomW, state=DISABLED)
 randomWords.place(relx=0.50, rely=0.06, anchor=N, width=round(screenWidth/3)-40)
 
 
-customWords = Checkbutton(wordsSetting, text="Practice custom words", font=("arial", 18), anchor="w", command=chooseCustomWords, variable=customW)
+customWords = Checkbutton(wordsSetting, text="Play with your words", font=("arial", 18), anchor="w", command=chooseCustomWords, variable=customW)
 customWords.place(relx=0.50, rely=0.50, anchor=CENTER, width=round(screenWidth/3)-40)
 
 
-wordsLimit = Scale(wordsSetting, from_=1, to=60, orient="horizontal", variable=numberOfWords)
+wordsLimit = Scale(wordsSetting, from_=1, to=70, orient="horizontal", variable=numberOfWords)
 wordsLimit.place(relx=0.50, rely=0.94, anchor=S, width=round(screenWidth/3)-40)
 
 
 #Typing mode settings
-typeMode = LabelFrame(settingsFrame, text="Typing Settings", labelanchor="n",background="#404040",bd=4,font=("arial",12),foreground="white")
+typeMode = LabelFrame(settingsFrame,background="#404040",bd=2,font=("arial",12),foreground="white")
 typeMode.place(relx=0.333333,rely=0.00,anchor=NW,height=round(windowHeight/4),width=round(screenWidth/3))
 
 
+freeTyp = IntVar()
+freeTyp.set(value=1)
+cWpm = IntVar()
+cWpm.set(value=0)
+
+
+def enableFreeTyping():
+    global wpmChecking
+    wpmChecking = False
+    wpmTest.config(state=NORMAL)
+    freeTyping.config(state=DISABLED)
+    cWpm.set(value=0)
+    if randomW.get():customWords.config(state=NORMAL)
+    wordsLimit.config(state=NORMAL)
+
+
+def enableCheckWpm():
+    global wpmChecking
+    wpmChecking = True
+    wpmTest.config(state=DISABLED)
+    freeTyping.config(state=NORMAL)
+    freeTyp.set(value=0)
+    if customW.get():
+        customW.set(0)
+        randomW.set(1)
+        chooseRandomWords()
+    numberOfWords.set(70)
+    wordsLimit.config(state=DISABLED)
+    customWords.config(state=DISABLED)
+
+
+freeTyping = Checkbutton(typeMode, text="Free typing", font=("arial", 18), anchor="w", variable=freeTyp,command=enableFreeTyping, state=DISABLED)
+freeTyping.place(relx=0.50, rely=0.06, anchor=N, width=round(screenWidth/3)-40)
+
+wpmTest = Checkbutton(typeMode, text="Check WPM", font=("arial", 18), anchor="w", variable=cWpm,command=enableCheckWpm)
+wpmTest.place(relx=0.50, rely=0.50, anchor=CENTER, width=round(screenWidth/3)-40)
+
+kpSound = IntVar()
+kpSound.set(value=1)
+
+def keypressSound():
+    global playing
+    if playing:playing = False
+    else:playing = True
+
+keyPress = Checkbutton(typeMode, text="Keypress sound", font=("arial", 18), anchor="w", command=keypressSound, variable=kpSound)
+keyPress.place(relx=0.50, rely=0.94, anchor=S, width=round(screenWidth/3)-40)
+
+
 #Controls and timing settings
-controlsFrame = LabelFrame(settingsFrame, text="Controls", labelanchor="n",background="#404040",bd=4,font=("arial",12),foreground="white")
+controlsFrame = LabelFrame(settingsFrame,background="#404040",bd=2,font=("arial",12),foreground="white")
 controlsFrame.place(relx=0.666666,rely=0.00,anchor=NW,height=round(windowHeight/4),width=round(screenWidth/3))
 
+wpmLabel = Label(controlsFrame, text="WPM: ...", background="#404040",font=("arial",30),foreground="white")
+wpmLabel.place(relx=0.10,rely=0.08,anchor=NW)
 
-timerLabel = Label(controlsFrame, text="00:00", background="#404040",font=("arial",40),foreground="white")
-timerLabel.place(relx=0.50,rely=0.10,anchor=N)
+
+timerLabel = Label(controlsFrame, text="00:00", background="#404040",font=("arial",30),foreground="white")
+timerLabel.place(relx=0.90,rely=0.08,anchor=NE)
+
+def chooseEasy():
+    easyWords.config(state=DISABLED)
+    mediumWords.config(state=NORMAL)
+    hardWords.config(state=NORMAL)
+    cMedium.set(value=0)
+    cHard.set(value=0)
+
+def chooseMedium():
+    easyWords.config(state=NORMAL)
+    mediumWords.config(state=DISABLED)
+    hardWords.config(state=NORMAL)
+    cEasy.set(value=0)
+    cHard.set(value=0)
+
+def chooseHard():
+    easyWords.config(state=NORMAL)
+    mediumWords.config(state=NORMAL)
+    hardWords.config(state=DISABLED)
+    cEasy.set(value=0)
+    cMedium.set(value=0)
+
+easyWords = Checkbutton(controlsFrame, text="Easy", font=("arial", 10), anchor="w", width=10, command=chooseEasy, variable=cEasy)
+easyWords.place(relx=0.10,rely=0.50,anchor=W)
+
+mediumWords = Checkbutton(controlsFrame, text="Medium", font=("arial", 10), anchor="w", width=10, command=chooseMedium, variable=cMedium, state=DISABLED)
+mediumWords.place(relx=0.50,rely=0.50,anchor=CENTER)
+
+hardWords = Checkbutton(controlsFrame, text="Hard", font=("arial", 10), anchor="w", width=10, command=chooseHard, variable=cHard)
+hardWords.place(relx=0.90,rely=0.50,anchor=E)
 
 
 startButton = Button(controlsFrame, text="Start", command=startGame, bd=0, font=("arial", 15), width=10)
-startButton.place(relx=0.20,rely=0.90,anchor=SW)
+startButton.place(relx=0.10,rely=0.92,anchor=SW)
 
 
 resetButton = Button(controlsFrame, text="Reset", command=resetGame, bd=0, font=("arial", 15), width=10)
-resetButton.place(relx=0.80,rely=0.90,anchor=SE)
+resetButton.place(relx=0.50,rely=0.92,anchor=S)
 
+def showHelp():
+    helpText = """
+        Help Window
+    """
+    messagebox.showinfo("Help", helpText)
+
+helpButton = Button(controlsFrame, text="Help", command=showHelp, bd=0, font=("arial", 15), width=10)
+helpButton.place(relx=0.90,rely=0.92,anchor=SE)
 
 ######################
 app.mainloop()
